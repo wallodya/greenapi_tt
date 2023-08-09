@@ -1,30 +1,38 @@
 version: "2.1"
 services:
   rabbitmq:
-    image: rabbitmq:3.10.7-management
+    build: 
+      context: .
+      dockerfile: Dockerfile
     hostname: greenapimq
     restart: always
     environment:
       - RABBITMQ_DEFAULT_USER=gapi_user
       - RABBITMQ_DEFAULT_PASS=gapi_password
+      - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit log_levels [{connection,error},{default,error}]
     volumes:
       - ./rabbitmq:/var/lib/rabbitmq
     ports:
       - 5672:15672 
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:15672"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
   m1:
     build: 
-      context: .
-      dockerfile: ./m1-service/Dockerfile
+      context: m1-service
+      dockerfile: Dockerfile
     ports:
       - 5000:3000
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
   m2:
     build: 
-      context: .
-      dockerfile: ./m2-service/Dockerfile
-    ports:
-      - 6000:3000
+      context: m2-service
+      dockerfile: Dockerfile
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
 
