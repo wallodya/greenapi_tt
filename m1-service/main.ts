@@ -4,6 +4,7 @@ import { channel, connect, connection } from "./mq-connect";
 import Logger from "./utils/logger";
 import { EXPRESS_PORT, ADD_NUMBERS_QUEUE_NAME, SERVICE_NAME, ADD_NUMBERS_RESULT_QUEUE_NAME } from "./constants";
 import validateQuery from "./utils/vaidate-query";
+import { randomUUID } from "crypto";
 
 
 const app = express()
@@ -26,18 +27,30 @@ const getResultHandler = async (req: Request, res: Response) => {
     
     logger.debug(`Params: ${queryParamsString.queryString}`)
 
-    channel.sendToQueue(ADD_NUMBERS_QUEUE_NAME, Buffer.from(queryParamsString.queryString))    
+    const correlationId = randomUUID()
 
-    const resultConsumerTag = "result-consumer"
+    channel.sendToQueue(
+		ADD_NUMBERS_QUEUE_NAME,
+		Buffer.from(queryParamsString.queryString),
+		{ 
+            replyTo: ADD_NUMBERS_RESULT_QUEUE_NAME,
+            correlationId
+        }
+	)    
 
+    const resultConsumerTag = `result-consumer-${correlationId}`
 
     channel.consume(ADD_NUMBERS_RESULT_QUEUE_NAME, (msg) => {
+        if (msg?.properties.correlationId !== correlationId) {
+            return
+        }
+        channel.ack(msg)
         channel.cancel(resultConsumerTag)
         logger.info("Got result: " + msg?.content.toString())
         res.json(msg?.content.toString())
     }, {
-        noAck: true,
-        consumerTag: resultConsumerTag
+        // noAck: true,
+        consumerTag: resultConsumerTag,
     })
 }
 

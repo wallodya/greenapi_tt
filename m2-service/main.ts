@@ -4,7 +4,7 @@ import Logger from "./utils/logger";
 import { channel, connect, connection } from "./mq-connect";
 import { getMessageContent, validateMessageContent } from "./utils/validation";
 
-const logger = new Logger("M2")
+const logger = new Logger("M2", { includeLevels: ["debug", "error", "info"]})
 
 const messageHandler = (msg: ConsumeMessage | null) => {
     if (!msg) {
@@ -12,9 +12,11 @@ const messageHandler = (msg: ConsumeMessage | null) => {
         return
     }
 
+    logger.debug(`Headers: ${JSON.stringify(msg.properties)}`)
+
     const content = getMessageContent(msg)
 
-    logger.debug(`Received message: ${content}`)
+    logger.debug(`Received message: ${JSON.stringify(content)}`)
 
     if (!validateMessageContent(content)) {
         logger.error("Message is invalid")
@@ -30,7 +32,13 @@ const messageHandler = (msg: ConsumeMessage | null) => {
 
     const result = a + b
 
-    channel.sendToQueue(ADD_NUMBERS_RESULT_QUEUE_NAME, Buffer.from(String(result)))
+    channel.sendToQueue(
+		msg.properties.replyTo,
+		Buffer.from(String(result)),
+		{
+			correlationId: msg.properties.correlationId ,
+		}
+	)
     
     logger.debug(`Calculated result: ${result}`)
 }
