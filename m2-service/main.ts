@@ -1,23 +1,52 @@
-import amqplib, { Channel, Connection } from 'amqplib'
+import { ConsumeMessage } from "amqplib";
+import { ADD_NUMBERS_QUEUE_NAME, ADD_NUMBERS_RESULT_QUEUE_NAME } from "./constants";
 import Logger from "./logger";
-
-const MQ_URL = "amqp://gapi_user:gapi_password@greenapimq:5672"
-const queueName = "gapiQueue"
+import { channel, connect, connection } from "./mq-connect";
 
 const logger = new Logger("M2")
 
-let connection: Connection, channel: Channel
-
-const connect = async () => {
-    logger.info("Connecting to MQ...")
-    try {
-        connection = await amqplib.connect(MQ_URL)
-        channel = await connection.createChannel()
-        await channel.assertQueue(queueName)
-        logger.info("Connected!")
-    } catch (error) {
-        logger.error(String(error))
+const messageHandler = (msg: ConsumeMessage | null) => {
+    if (!msg) {
+        logger.error("Recieved empty message")
+        return
     }
+
+    const content = JSON.parse((msg.content.toString()))
+
+    logger.debug(`Recieved message: ${content}`)
+
+    if (!("a" in content) || !("b" in content)) {
+        logger.error("Message is invalid")
+        return
+    }
+
+
+    const a = Number(content.a)
+    const b = Number(content.b)
+
+    if (Number.isNaN(a) || Number.isNaN(b)) {
+        logger.error(`Field values are invalid`)
+    }
+
+    const result = a + b
+
+    channel.sendToQueue(ADD_NUMBERS_RESULT_QUEUE_NAME, Buffer.from(String(result)))
+    
+    logger.debug(`Result: ${result}`)
 }
 
-connect()
+const main = async () => {
+    await connect()
+
+    channel.consume(ADD_NUMBERS_QUEUE_NAME, messageHandler, {
+        noAck: true
+    })
+}
+
+main()
+
+process.on("beforeExit", async () => {
+    await channel.close()
+    await connection.close()
+    logger.info("Closed connection to broker")
+})
