@@ -1,11 +1,17 @@
-import {randomUUID} from "crypto"
+import { randomUUID } from "crypto"
 
-type LogType = "debug" | "info" | "error"
+type LogLevel = "debug" | "info" | "error"
 
 type LoggerOptions = Partial<{
 	doSaveToLogFile: boolean
 	doConsoleLogs: boolean
 	logFilePath: string
+    logFields: Partial<{
+        id: boolean
+        time: boolean
+        level: boolean
+    }>
+    includeLevels: LogLevel[]
 }>
 
 type LogMessage = {
@@ -16,7 +22,7 @@ type LogMessage = {
 }
 
 class MessageBuilder {
-	logTypeMap: Map<LogType, string>
+	logTypeMap: Map<LogLevel, string>
 	constructor() {
 		this.logTypeMap = new Map([
 			["debug", "DUBUG"],
@@ -32,7 +38,7 @@ class MessageBuilder {
 		return randomUUID()
 	}
 
-	build(type: LogType, msg: string): LogMessage {
+	build(type: LogLevel, msg: string): LogMessage {
 		const logType = this.logTypeMap.get(type)
 
 		if (!logType) {
@@ -53,15 +59,23 @@ class MessageBuilder {
 
 class Logger {
     name: string
-	logFilePath: string
-	doSaveToLogFile: boolean
 	doConsoleLogs: boolean
+    includeTime: boolean 
+    includeId: boolean 
+    includeLevel: boolean 
+    levels: LogLevel[]
 	messageBuilder: MessageBuilder
 	constructor(name: string, options?: LoggerOptions) {
         this.name = name
-		this.doSaveToLogFile = options?.doSaveToLogFile ?? true
-		this.logFilePath = options?.logFilePath ?? "./logs.csv"
+
 		this.doConsoleLogs = options?.doConsoleLogs ?? true
+
+        this.includeTime = options?.logFields?.time ?? true
+        this.includeId = options?.logFields?.id ?? false
+        this.includeLevel = options?.logFields?.level ?? true
+
+        this.levels = options?.includeLevels ?? ["error", "info"]
+
 		this.messageBuilder = new MessageBuilder()
 	}
 
@@ -77,13 +91,7 @@ class Logger {
 	error(msg: string) {
         const log = this.messageBuilder.build("error", msg)
 
-        if (this.doConsoleLogs) {
-            console.log(this.getLogString(log))
-        }
-
-        if (this.doSaveToLogFile) {
-
-        }
+        this.print(log)
 
         return
     }
@@ -91,13 +99,7 @@ class Logger {
 	info(msg: string) {
         const log = this.messageBuilder.build("info", msg)
 
-        if (this.doConsoleLogs) {
-            console.log(this.getLogString(log))
-        }
-
-        if (this.doSaveToLogFile) {
-
-        }
+        this.print(log)
 
         return
     }
@@ -105,15 +107,15 @@ class Logger {
 	debug(msg: string) {
         const log = this.messageBuilder.build("debug", msg)
 
+        this.print(log)
+
+        return
+    }
+
+    print(log: LogMessage) {
         if (this.doConsoleLogs) {
             console.log(this.getLogString(log))
         }
-
-        if (this.doSaveToLogFile) {
-
-        }
-
-        return
     }
 }
 
