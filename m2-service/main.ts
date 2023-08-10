@@ -1,25 +1,25 @@
 import { ConsumeMessage } from "amqplib";
 import { ADD_NUMBERS_QUEUE_NAME, ADD_NUMBERS_RESULT_QUEUE_NAME } from "./constants";
-import Logger from "./logger";
+import Logger from "./utils/logger";
 import { channel, connect, connection } from "./mq-connect";
+import { getMessageContent, validateMessageContent } from "./utils/validation";
 
 const logger = new Logger("M2")
 
 const messageHandler = (msg: ConsumeMessage | null) => {
     if (!msg) {
-        logger.error("Recieved empty message")
+        logger.error("Received empty message")
         return
     }
 
-    const content = JSON.parse((msg.content.toString()))
+    const content = getMessageContent(msg)
 
-    logger.debug(`Recieved message: ${content}`)
+    logger.debug(`Received message: ${content}`)
 
-    if (!("a" in content) || !("b" in content)) {
+    if (!validateMessageContent(content)) {
         logger.error("Message is invalid")
         return
     }
-
 
     const a = Number(content.a)
     const b = Number(content.b)
@@ -32,7 +32,7 @@ const messageHandler = (msg: ConsumeMessage | null) => {
 
     channel.sendToQueue(ADD_NUMBERS_RESULT_QUEUE_NAME, Buffer.from(String(result)))
     
-    logger.debug(`Result: ${result}`)
+    logger.debug(`Calculated result: ${result}`)
 }
 
 const main = async () => {

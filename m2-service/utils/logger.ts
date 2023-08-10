@@ -18,13 +18,13 @@ type LogMessage = {
 	id: string
 	timestamp: number
 	msg: string
-	logType: string
+	level: string
 }
 
 class MessageBuilder {
-	logTypeMap: Map<LogLevel, string>
+	logLevelNameMap: Map<LogLevel, string>
 	constructor() {
-		this.logTypeMap = new Map([
+		this.logLevelNameMap = new Map([
 			["debug", "DUBUG"],
 			["info", "INFO"],
 			["error", "ERROR"],
@@ -39,9 +39,9 @@ class MessageBuilder {
 	}
 
 	build(type: LogLevel, msg: string): LogMessage {
-		const logType = this.logTypeMap.get(type)
+		const level = this.logLevelNameMap.get(type)
 
-		if (!logType) {
+		if (!level) {
 			throw new Error("Log type is not included in name map")
 		}
 
@@ -50,7 +50,7 @@ class MessageBuilder {
 
 		return {
 			msg,
-			logType,
+			level,
 			id,
 			timestamp,
 		}
@@ -79,13 +79,17 @@ class Logger {
 		this.messageBuilder = new MessageBuilder()
 	}
 
-    getLogString({timestamp, logType, msg, id}: LogMessage) {
+    getLogString({timestamp, level, msg, id}: LogMessage) {
         const time = new Date(timestamp).toLocaleString()
-        return `${this.name} [${logType}] ${time} || ${msg} (${id})`
-    }
-
-    getCSVString({timestamp, logType, msg, id}: LogMessage) {
-        return `${id},${this.name},${logType},${timestamp},${msg}`
+        return `${
+            this.name
+        } [${
+           this.includeLevel ? level : ""
+        }] ${
+            this.includeTime ? time : ""
+        } || ${msg} ${
+            this.includeId ? `(${id})` : ""
+        }`
     }
 
 	error(msg: string) {

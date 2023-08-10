@@ -1,5 +1,5 @@
 import amqplib, { Channel, Connection } from 'amqplib'
-import Logger from "./logger";
+import Logger from "./utils/logger";
 import { ADD_NUMBERS_QUEUE_NAME, ADD_NUMBERS_RESULT_QUEUE_NAME, MQ_URL, SERVICE_NAME } from './constants';
 
 const logger = new Logger(`${SERVICE_NAME}.connector`)
